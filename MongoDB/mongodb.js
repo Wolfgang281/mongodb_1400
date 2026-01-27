@@ -744,7 +744,7 @@ db.students.find({
   },
 });
 
-//! element operators (exists, type, etc..)
+//! ================================ element operators (exists, type, etc..)
 // exists =====================================> $exists
 // type =======================================> $type
 
@@ -768,7 +768,7 @@ db.emp.find(
 
 db.emp.find({ sal: { $type: "number" } });
 
-// evaluation operators (regex, expr, etc..)
+//! ============================= evaluation operators (regex, expr, etc..) ======================
 
 //? regex =======================================> $regex
 //? regular expression --> used for pattern matching (only works on string datatypes)
@@ -779,7 +779,7 @@ db.emp.find({ sal: { $type: "number" } });
 
 //& first way --> we are applying regex anywhere in the name (firs, last ......)
 //! display all the emp details who are having letter 'a' in their name
-db.emp.find({ empName: { $regex: /ada/ } }, { empName: 1, _id: 0 });
+db.emp.find({ empName: { $regex: /a/ } }, { empName: 1, _id: 0 });
 
 //& second way --> we are applying regex at the start
 // cap symbol (shift + 6 ==> ^) will start the pattern matching from the beginning of the string
@@ -803,3 +803,98 @@ db.emp.find({ empName: { $regex: /^.a/ } }, { empName: 1 });
 
 //! display all the emp names who are having exactly 4 letters in their name
 db.emp.find({ empName: { $regex: /^....$/ } }, { empName: 1 });
+
+//& fifth way -->
+// for skipping the n characters use dot(*) symbol.
+// one dot will represent 1 character
+//! display all the emp details whose name starts with "a" and ends with "s"
+db.emp.find({ empName: { $regex: /^j.*s$/ } }, { empName: 1 });
+
+//? expr =======================================> $expr
+//? expression --> 1) it is used to perform operations(comparison) in the documents
+//? --> 2) it is used to perform aggregation operations //TODO:
+
+//~ syntax for expr -->
+// filter part
+// { $expr: { $CO: [] } }
+//? co -> comparison operator
+
+// display all the emp names and sal whose sal is greater than 2500
+db.emp.find({ sal: { $gt: 2500 } }, { empName: 1, sal: 1, _id: 0 });
+db.emp.find({ $expr: { $gt: ["$sal", 2500] } }, { empName: 1, sal: 1, _id: 0 });
+
+//! whenever we are passing document fields as value ==>  1) use Double quotes and 2) prefix it with $
+
+// show the emp whose commission (comm) is greater than the salary (sal)
+// .count()
+db.emp.find(
+  { $expr: { $gt: ["$comm", "$sal"] } },
+  { empName: 1, comm: 1, sal: 1, _id: 0 },
+);
+
+//~ updateOne/updateMany({filter}, {updation}, {options})
+//? update existing key
+//? update existing value
+//? add a new key-value pair
+//? delete a existing key-value pair
+//! ======================== update op ===============
+///! //? ==> field update op (set, unset, rename)
+//? set =========================> $set
+//? unset =======================> $unset
+//? rename ======================> $rename
+
+//~ $set ==> using $set we can update the existing value and if the keyName is not present then a new key-value pair will be created
+//? syntax for $set ==>
+// updation part ==>
+// { $set: { keyName1: value1, keyName2: value2,....... } }
+
+db.students.updateMany(
+  { age: 22 },
+  { $set: { city: "Gurugram", age: 25, email: "abc@gmail.com" } },
+);
+
+let updatedResp = {
+  acknowledged: true,
+  insertedId: null,
+  matchedCount: 2,
+  modifiedCount: 2,
+  upsertedCount: 0,
+};
+
+db.students.updateMany({}, { $set: { hasInsurance: false } });
+
+db.students.updateMany({}, { $set: { hasInsurance: "" } });
+db.students.updateOne({}, { $set: { hasInsurance: null } });
+db.students.updateMany({}, { $set: { hasInsurance: undefined } });
+
+//~ $unset ==> using $unset we can remove a key-value pair from the document
+//? syntax for $unset ==>
+// updation part ==>
+// { $unset: { keyName1: 1} } // here we have to pass truthy values
+
+db.students.updateMany({}, { $unset: { hasInsurance: "" } });
+db.students.updateOne({}, { $unset: { age: 1 } });
+
+//~ $rename ==> using $rename we can modify the existing key
+//? syntax for $rename ==>
+// updation part ==>
+// { $rename: { oldKeyName: newKeyName} }
+
+db.students.updateMany(
+  {}, // filter
+  { $rename: { name: "username" } }, // updation
+  { upsert: false }, // options --> upsert and by default it;s value is false
+);
+
+db.students.updateOne({ age: 25 }, { $set: { email: "abc@gmail.com" } });
+
+db.students.updateOne(
+  { age: 250, sal: 50000, name: "smith" },
+  { $set: { phone: "9869868981" } },
+  { upsert: true }, // update + insert
+);
+
+db.emp.updateOne(
+  {},
+  { $set: { "performance.rating": 4.2, "performance.bonusPoints": 4 } },
+);
