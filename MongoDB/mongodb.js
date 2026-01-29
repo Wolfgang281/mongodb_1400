@@ -414,6 +414,9 @@ db.books.updateOne({ author: "james" }, { $set: { price: 25 } });
 //? ==> field update op (set, unset, etc..)
 //? ==> arithmetic update op (max, min, inc, etc..)
 //? ==> array update op (push, pull, etc..)
+//! questions
+//! cursor
+//! data modelling
 //~ aggregation operators
 //? ==> pipeline stages op (match, group, etc..)
 //? ==> accumulator op (max, min, avg, count, sum)
@@ -883,7 +886,7 @@ db.students.updateOne({}, { $unset: { age: 1 } });
 db.students.updateMany(
   {}, // filter
   { $rename: { name: "username" } }, // updation
-  { upsert: false }, // options --> upsert and by default it;s value is false
+  { upsert: false }, // options --> upsert and by default it's value is false
 );
 
 db.students.updateOne({ age: 25 }, { $set: { email: "abc@gmail.com" } });
@@ -894,7 +897,597 @@ db.students.updateOne(
   { upsert: true }, // update + insert
 );
 
+//! ================== //? ==> arithmetic update op (max, min, inc)===============================
+//?  $max, $min, $inc
+//? syntax for $max and $min
+//? updation part ==>
+// { $max/$min: {fieldName: value }
+//~ $max will only update the data when the passed value is strictly greater than the saved value
+
+//~ $min will only update the data when the passed value is strictly lower than the saved value
+
+//~ in case the field_name is not present, then a new key-value pair will be added
+
+db.scores.insertMany([
+  {
+    name: "varun",
+    maxScore: 300,
+    minScore: 120,
+  },
+  {
+    name: "ashwini",
+    maxScore: 250,
+    minScore: 90,
+  },
+]);
+db.scores.updateOne({ name: "varun" }, { $max: { maxScore: 300 } });
+
+db.scores.updateOne({ name: "varun" }, { $min: { lowScore: 300 } });
+
+//? syntax for $inc
+//? it is used to increment/decrement the data by specific values
+//~ in case the field_name is not present, then a new key-value pair will be added
+//~ null cannot be used with $inc
+//? updation part ==>
+// { $inc: {fieldName: +/- INTEGER NUMBER }
+
+db.scores.updateOne({ name: "varun" }, { $inc: { sal: null } });
+
+//! =================== array update op (push, pull, etc..) =====================
+//? $push --> this will add an element at the last
+//~ syntax --> { $push: {fieldName: "value"} } "objects""strings, numbers"
+db.emp.updateOne({}, { $push: { skills: "html" } });
+
+db.emp.updateOne({}, { $push: { skills: ["node", "css"] } }); //& this will add a nested array inside skills array, to add multiple values we use $each along with $push
+
+//? $push + $each (($position, $sort, $slice): modifiers) --> using these, we can add multiple values in the array
+//~ syntax --> { $push: {fieldName: {$each: [v1, v2, v3,......]}} }
+
 db.emp.updateOne(
-  {},
-  { $set: { "performance.rating": 4.2, "performance.bonusPoints": 4 } },
+  { empName: "ward" },
+  { $push: { skills: { $each: ["node", "mongodb"] } } },
 );
+
+db.emp.updateOne(
+  { empName: "scott" },
+  { $push: { skills: { $each: ["gen_ai"], $position: 3, $sort: 1 } } },
+);
+// sort -> 1 for ascending and -1 for descending
+
+db.emp.updateOne({}, { $push: { hobbies: "singing" } });
+// when the field is not present then a new field will be created whose datatype will be array
+
+//? addToSet --> $addToSet is used to add only unique values in an array
+// { $addToSet: {fieldName: value} }
+//~ (($position, $sort, $slice): modifiers these cannot be used with addToSet
+
+db.emp.updateOne(
+  { empName: "ward" },
+  {
+    $addToSet: { skills: { $each: ["node", "mongodb", "css"] } },
+  },
+);
+
+//? $pop --> this will remove an element from an array either from last or first
+// syntax --> { $pop: { fieldName: 1/-1 } } (1 --> from end, -1 from start)
+
+db.emp.updateOne({}, { $pop: { skills: -1 } });
+
+//? $pullAll --> this will remove all the occurrences present in the array if it matches with the values/literals
+// updation part --> { $pullAll: {fieldName: [v1, v2, .....]} }
+db.emp.updateOne({}, { $pullAll: { skills: ["sql", "react"] } });
+//! $pullAll will accept array of values
+
+//? $pull --> this will remove all the occurrences present in the array if it matches with the values/literals or conditions
+// syntax --> updation part -->
+// { $pull: { fields: { expression } } }
+db.emp.updateOne({}, { $pull: { skills: { $regex: /e/ } } });
+db.emp.updateOne({}, { $pull: { skills: "mongodb" } });
+
+//! diff between $pull and $pullAll --> using $pull we can pass conditions
+
+//! 1) we can update the first matching element ({})
+//! 2) we can update all the elements
+//! 3) we can update all the matching elements
+
+db.users.insertMany([
+  {
+    name: "Rajesh Kumar",
+    age: 32,
+    currentCompany: "Amazon",
+    totalExperience: 10,
+    experience: [
+      {
+        company: "TCS",
+        duration: 24,
+        role: "Developer",
+        salary: 400000,
+        rating: 3.5,
+      },
+      {
+        company: "Infosys",
+        duration: 36,
+        role: "Senior Developer",
+        salary: 800000,
+        rating: 4.2,
+      },
+      {
+        company: "Amazon",
+        duration: 18,
+        role: "Tech Lead",
+        salary: 2500000,
+        rating: 4.8,
+      },
+    ],
+  },
+  {
+    name: "Priya Sharma",
+    age: 28,
+    currentCompany: "Google",
+    totalExperience: 6,
+    experience: [
+      {
+        company: "Wipro",
+        duration: 18,
+        role: "Developer",
+        salary: 450000,
+        rating: 3.8,
+      },
+      {
+        company: "Microsoft",
+        duration: 24,
+        role: "SDE-2",
+        salary: 1800000,
+        rating: 4.5,
+      },
+      {
+        company: "Google",
+        duration: 12,
+        role: "Senior Engineer",
+        salary: 3200000,
+        rating: 4.9,
+      },
+    ],
+  },
+  {
+    name: "Amit Verma",
+    age: 35,
+    currentCompany: "Flipkart",
+    totalExperience: 12,
+    experience: [
+      {
+        company: "Accenture",
+        duration: 30,
+        role: "Analyst",
+        salary: 350000,
+        rating: 3.2,
+      },
+      {
+        company: "Capgemini",
+        duration: 36,
+        role: "Consultant",
+        salary: 700000,
+        rating: 3.9,
+      },
+      {
+        company: "Flipkart",
+        duration: 18,
+        role: "Product Manager",
+        salary: 2200000,
+        rating: 4.6,
+      },
+    ],
+  },
+  {
+    name: "Sneha Reddy",
+    age: 30,
+    currentCompany: "Microsoft",
+    totalExperience: 8,
+    experience: [
+      {
+        company: "TCS",
+        duration: 24,
+        role: "Developer",
+        salary: 420000,
+        rating: 3.6,
+      },
+      {
+        company: "Amazon",
+        duration: 30,
+        role: "SDE-2",
+        salary: 1600000,
+        rating: 4.4,
+      },
+      {
+        company: "Microsoft",
+        duration: 12,
+        role: "Senior SDE",
+        salary: 2800000,
+        rating: 4.7,
+      },
+    ],
+  },
+  {
+    name: "Vikram Singh",
+    age: 26,
+    currentCompany: "Infosys",
+    totalExperience: 4,
+    experience: [
+      {
+        company: "Cognizant",
+        duration: 18,
+        role: "Junior Developer",
+        salary: 380000,
+        rating: 3.4,
+      },
+      {
+        company: "Infosys",
+        duration: 24,
+        role: "Developer",
+        salary: 650000,
+        rating: 4.0,
+      },
+    ],
+  },
+  {
+    name: "Ananya Iyer",
+    age: 33,
+    currentCompany: "Netflix",
+    totalExperience: 11,
+    experience: [
+      {
+        company: "Wipro",
+        duration: 24,
+        role: "Developer",
+        salary: 400000,
+        rating: 3.5,
+      },
+      {
+        company: "Adobe",
+        duration: 36,
+        role: "Senior Developer",
+        salary: 1500000,
+        rating: 4.3,
+      },
+      {
+        company: "Netflix",
+        duration: 18,
+        role: "Staff Engineer",
+        salary: 4000000,
+        rating: 4.9,
+      },
+    ],
+  },
+  {
+    name: "Rohit Malhotra",
+    age: 29,
+    currentCompany: "Paytm",
+    totalExperience: 7,
+    experience: [
+      {
+        company: "HCL",
+        duration: 20,
+        role: "Developer",
+        salary: 360000,
+        rating: 3.3,
+      },
+      {
+        company: "Swiggy",
+        duration: 28,
+        role: "Backend Developer",
+        salary: 1100000,
+        rating: 4.1,
+      },
+      {
+        company: "Paytm",
+        duration: 14,
+        role: "Senior Developer",
+        salary: 1800000,
+        rating: 4.5,
+      },
+    ],
+  },
+  {
+    name: "Kavya Nair",
+    age: 31,
+    currentCompany: "Uber",
+    totalExperience: 9,
+    experience: [
+      {
+        company: "Infosys",
+        duration: 30,
+        role: "Developer",
+        salary: 500000,
+        rating: 3.7,
+      },
+      {
+        company: "Ola",
+        duration: 24,
+        role: "Senior Developer",
+        salary: 1300000,
+        rating: 4.2,
+      },
+      {
+        company: "Uber",
+        duration: 18,
+        role: "Tech Lead",
+        salary: 3500000,
+        rating: 4.8,
+      },
+    ],
+  },
+  {
+    name: "Arjun Kapoor",
+    age: 27,
+    currentCompany: "Zomato",
+    totalExperience: 5,
+    experience: [
+      {
+        company: "Tech Mahindra",
+        duration: 18,
+        role: "Junior Developer",
+        salary: 340000,
+        rating: 3.2,
+      },
+      {
+        company: "Myntra",
+        duration: 20,
+        role: "Developer",
+        salary: 900000,
+        rating: 4.0,
+      },
+      {
+        company: "Zomato",
+        duration: 10,
+        role: "SDE-2",
+        salary: 1600000,
+        rating: 4.4,
+      },
+    ],
+  },
+  {
+    name: "Divya Menon",
+    age: 34,
+    currentCompany: "Oracle",
+    totalExperience: 12,
+    experience: [
+      {
+        company: "Accenture",
+        duration: 36,
+        role: "Analyst",
+        salary: 380000,
+        rating: 3.4,
+      },
+      {
+        company: "SAP",
+        duration: 30,
+        role: "Consultant",
+        salary: 1200000,
+        rating: 4.1,
+      },
+      {
+        company: "Oracle",
+        duration: 24,
+        role: "Senior Consultant",
+        salary: 2000000,
+        rating: 4.5,
+      },
+    ],
+  },
+  {
+    name: "Karthik Bose",
+    age: 28,
+    currentCompany: "PhonePe",
+    totalExperience: 6,
+    experience: [
+      {
+        company: "Cognizant",
+        duration: 24,
+        role: "Developer",
+        salary: 420000,
+        rating: 3.6,
+      },
+      {
+        company: "Razorpay",
+        duration: 20,
+        role: "Backend Engineer",
+        salary: 1400000,
+        rating: 4.3,
+      },
+      {
+        company: "PhonePe",
+        duration: 12,
+        role: "Senior Engineer",
+        salary: 2400000,
+        rating: 4.7,
+      },
+    ],
+  },
+  {
+    name: "Meera Joshi",
+    age: 30,
+    currentCompany: "Salesforce",
+    totalExperience: 8,
+    experience: [
+      {
+        company: "TCS",
+        duration: 28,
+        role: "Developer",
+        salary: 410000,
+        rating: 3.5,
+      },
+      {
+        company: "Deloitte",
+        duration: 26,
+        role: "Consultant",
+        salary: 1100000,
+        rating: 4.2,
+      },
+      {
+        company: "Salesforce",
+        duration: 14,
+        role: "Lead Developer",
+        salary: 2600000,
+        rating: 4.6,
+      },
+    ],
+  },
+  {
+    name: "Siddharth Rao",
+    age: 25,
+    currentCompany: "Freshworks",
+    totalExperience: 3,
+    experience: [
+      {
+        company: "Wipro",
+        duration: 15,
+        role: "Junior Developer",
+        salary: 350000,
+        rating: 3.3,
+      },
+      {
+        company: "Freshworks",
+        duration: 18,
+        role: "Developer",
+        salary: 800000,
+        rating: 4.1,
+      },
+    ],
+  },
+  {
+    name: "Pooja Gupta",
+    age: 32,
+    currentCompany: "LinkedIn",
+    totalExperience: 10,
+    experience: [
+      {
+        company: "HCL",
+        duration: 24,
+        role: "Developer",
+        salary: 390000,
+        rating: 3.4,
+      },
+      {
+        company: "Snapdeal",
+        duration: 30,
+        role: "Senior Developer",
+        salary: 1000000,
+        rating: 4.0,
+      },
+      {
+        company: "LinkedIn",
+        duration: 22,
+        role: "Staff Engineer",
+        salary: 3800000,
+        rating: 4.8,
+      },
+    ],
+  },
+  {
+    name: "Aditya Khanna",
+    age: 29,
+    currentCompany: "Adobe",
+    totalExperience: 7,
+    experience: [
+      {
+        company: "Infosys",
+        duration: 26,
+        role: "Developer",
+        salary: 480000,
+        rating: 3.7,
+      },
+      {
+        company: "Intuit",
+        duration: 22,
+        role: "SDE-2",
+        salary: 1700000,
+        rating: 4.4,
+      },
+      {
+        company: "Adobe",
+        duration: 14,
+        role: "Senior Engineer",
+        salary: 2900000,
+        rating: 4.7,
+      },
+    ],
+  },
+]);
+
+db.users.find({ experience: { $elemMatch: { duration: { $gt: 30 } } } });
+
+db.users.findOne({ name: "Rajesh Kumar" });
+
+//! 1) we can update the first matching element ({}) --> $
+
+//~ Add a bonus field to the experience history in which the duration is greater than 20
+db.users.updateOne(
+  { experience: { $elemMatch: { duration: { $gt: 20 } } } }, // filter
+  { $set: { "experience.$.bonus": "" } }, // updation
+);
+//? "experience.$" ==> this will point to the first matching experience object
+//? "experience.$.duration" ==> this will point to the duration field of the first matching experience object
+
+//! 2) we can update all the elements --> $[]
+db.users.updateOne(
+  { experience: { $elemMatch: { duration: { $gt: 20 } } } }, // filter
+  { $unset: { "experience.$[].bonus": "" } }, // updation
+);
+
+//! 3) we can update all the matching elements --> $[e]
+db.users.updateOne(
+  { experience: { $elemMatch: { duration: { $gt: 20 } } } }, // filter
+  { $set: { "experience.$[e].incentive": 200 } }, // updation
+  {
+    arrayFilters: [{ "e.duration": { $gt: 20 } }],
+  },
+);
+
+//& add topCompany:true, to all the exp entries where the company is either google, amazon, or microsoft
+db.users.find({
+  experience: {
+    $elemMatch: { company: { $in: ["Amazon", "Google", "Microsoft"] } },
+  },
+});
+
+db.users.updateMany(
+  {
+    experience: {
+      $elemMatch: { company: { $in: ["Amazon", "Google", "Microsoft"] } },
+    },
+  },
+  { $set: { "experience.$[e].topCompany": true } },
+  {
+    arrayFilters: [
+      {
+        "e.company": { $in: ["Amazon", "Google", "Microsoft"] }, // conditions
+      },
+    ],
+  },
+);
+//& add midLevel:true, to all the exp history where salary is between 80,000 and 15,00,000
+db.users.find({
+  experience: { $elemMatch: { salary: { $gt: 800000, $lt: 15000000 } } },
+});
+
+db.users.updateMany(
+  {
+    experience: { $elemMatch: { salary: { $gt: 80000, $lt: 15000000 } } },
+  },
+  {
+    $set: { "experience.$[e].midLevel": true },
+  },
+  {
+    arrayFilters: [{ "e.salary": { $gt: 80000, $lt: 15000000 } }],
+  },
+);
+
+//& find all the emp who are having sal bw 1000 and 2000
+db.emp.find(
+  { $and: [{ sal: { $gt: 1000 } }, { sal: { $lt: 2000 } }] },
+  {
+    _id: 0,
+    sal: 1,
+  },
+);
+db.emp.find({ sal: { $gt: 1000, $lt: 2000 } }, { _id: 0, sal: 1 });
