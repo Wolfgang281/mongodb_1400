@@ -409,7 +409,7 @@ db.books.updateOne({ author: "james" }, { $set: { price: 25 } });
 //? ==> logical operators (logical AND, logical OR, etc..)
 //? ==> array operators (size, all, elemMatch, etc..)
 //? ==> element operators (exists, type, etc..)
-//? ==> evaluation operators (regex, expr, etc..)
+//? ==> evaluation operators (regex, expr, $mod, $where(bod optimization), etc..)
 //~ update operators
 //? ==> field update op (set, unset, etc..)
 //? ==> arithmetic update op (max, min, inc, etc..)
@@ -1491,3 +1491,80 @@ db.emp.find(
   },
 );
 db.emp.find({ sal: { $gt: 1000, $lt: 2000 } }, { _id: 0, sal: 1 });
+
+//! 48. Find departments whose deptNo is divisible by 10 (use $mod)
+// { fieldname: {$mod: [divisor, remainder]} }
+db.emp.find({ age: { $mod: [10, 0] } }, { age: 1 });
+
+//! 49. Find employees where age multiplied by 100 is less than salary (use $expr) //TODO:
+
+//! 50. Find all employees whose job title contains "man" (manager, salesman)
+db.emp.find({ job: { $regex: /^man/ } }, { job: 1 });
+
+//! 57. Find employees working in dept 20 or 30 AND have "sql" skill
+db.emp.find({
+  $and: [
+    { skills: "sql" }, // first condition
+    { deptNo: { $in: [20, 30] } }, // second condition
+  ],
+});
+db.emp.find({ skills: "sql", deptNo: { $in: [20, 30] } });
+
+//! 58. Find all managers or analysts with performance rating above 4.5
+
+//! 59. Find employees with exactly 3 projects AND education is "master" or "phd"
+db.emp.find({ skills: { $size: 3 }, education: { $in: ["master", "phd"] } });
+
+//! 27. Set performance rating to 4.9 for employee "martin" and also add last promotion date as today's date to the emp data
+db.emp.updateOne(
+  { empName: "ward" },
+  {
+    $set: {
+      "performance.rating": 4.9,
+      "performance.lastPromotedDate": ISODate("2026-01-31"),
+    },
+  },
+);
+
+//! 28. Add a new facility "gym" to the facilities array of department 20
+db.emp.updateOne({ deptNo: 20 }, { $addToSet: { facilities: "gym" } });
+
+//! Add "trainingRequired" field as true for all clerks with performance rating below 4.0
+db.emp.updateMany(
+  {
+    job: "clerk",
+    "performance.rating": { $lt: 4 },
+  },
+  {
+    $set: { trainingRequired: true },
+  },
+);
+
+//! 24. Add skill "problem_solving" at position 1 in skills array for employee "scott"
+db.emp.updateOne(
+  { empName: "scott" },
+  { $push: { skills: { $each: ["problem_solving"], $position: 1 } } },
+);
+
+//! 25. Add project "urgent_fix" at position 0 for all analysts
+
+//! find() --> array (X) and findOne() --> object
+
+db.emp.insertMany([
+  { no: 1 },
+  { no: 2 },
+  { no: 3 },
+  { no: 4 },
+  { no: 5 },
+  { no: 6 },
+  { no: 7 },
+]);
+
+db.emp.find().forEach((doc) => {
+  print(doc.age);
+  print(doc.empName);
+});
+
+(itCount(), pretty(), forEach(), count());
+
+//! https://excalidraw.com/#json=IiI49j0Q_y_hABOvbyD3T,EdL3PGxqI_JMqW6Fo2mz7w
