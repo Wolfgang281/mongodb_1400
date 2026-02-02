@@ -1565,6 +1565,271 @@ db.emp.find().forEach((doc) => {
   print(doc.empName);
 });
 
-(itCount(), pretty(), forEach(), count());
+// (itCount(), pretty(), forEach(), count());
 
 //! https://excalidraw.com/#json=IiI49j0Q_y_hABOvbyD3T,EdL3PGxqI_JMqW6Fo2mz7w
+
+//! data modelling ==> it defines how data is stored and what is the relation between the data
+
+//? how to define relation between data --> 1) embedded(nested) 2) referenced
+//? in mongodb, by default no structure is present --> to (check)validate the data
+//& users
+let doc1 = {
+  username: "abc",
+  userAge: 45,
+  userContactDetails: {
+    email: "abc@gmail",
+    phone: "8765434567",
+  },
+  userAddressDetails: {
+    city: "noida",
+    state: "up",
+  },
+};
+//! denormalized data
+
+//& advantage -->
+//? 1) single query can be used to fetch complete data
+
+//& disadvantage -->
+//? 1) 16 MB is the maximum size of a document in MongoDB
+//? 2) 100 levels of nesting can be performed
+//? 3) sometimes we are over-fetching the data
+//? 4) update operations are slow
+
+db.moviesList.insertMany([
+  {
+    name: "mission impossible",
+    genre: "action",
+    actors: {
+      actor1: "tom cruise",
+      age1: 47,
+      actor2: "simon P",
+      age2: 48,
+    },
+  },
+  {
+    name: "silent-hill",
+    genre: "horror",
+    actors: {
+      actor2: "simon P",
+      age: 47,
+    },
+  },
+]);
+
+db.moviesList.findOne({}, { actors: 0 });
+
+//& normalized data -> referenced data
+//& users
+let u1 = {
+  _id: "U123",
+  username: "abc",
+  userAge: 45,
+  contactDetails: "C123",
+};
+
+let u2 = {
+  _id: "U345",
+  username: "def",
+  userAge: 45,
+};
+
+//& contact collection
+let c1 = {
+  _id: "C123",
+  email: "abc@gmail",
+  phone: "8765434567",
+};
+
+db.moviesName.insertMany([
+  {
+    _id: "M123",
+    name: "mission imposable",
+    genre: "action",
+  },
+  {
+    _id: "M234",
+    name: "silent-hill",
+    genre: "horror",
+  },
+]);
+
+db.actors.insertMany([
+  {
+    _id: "A123",
+    name: "tom cruise",
+    age: 47,
+  },
+  {
+    _id: "A234",
+    name: "simon P",
+    age: 48,
+  },
+]);
+
+db.moviesName.updateOne(
+  { _id: "M123" },
+  { $set: { actor1: "A123", actor2: "A234" } },
+);
+
+db.moviesName.aggregate([
+  {
+    $lookup: {
+      from: "actors",
+      localField: "actor1",
+      foreignField: "id",
+      as: "actor1",
+    },
+  },
+]);
+
+//! products and cart
+//! embedded
+
+let cart1 = {
+  prod1: { name: "samsung phone", price: "50000", qty: 3, brand: "sam" },
+  prod2: { name: "laptop", price: "70000", qty: 1, brand: "asus" },
+  prod3: { name: "mouse", price: "2000", qty: 2, brand: "asus" },
+  prod4: { name: "TV", price: "800000", qty: 1, brand: "samsung" },
+};
+let cart2 = {
+  prod1: { name: "keyboard", price: "10000", qty: 1, brand: "asus" },
+  prod2: { name: "shoes", price: "5000", qty: 1, brand: "nike" },
+  prod3: { name: "mouse", price: "2000", qty: 2, brand: "sam" },
+  prod4: { name: "bottle", price: "800", qty: 1, brand: "nike" },
+};
+
+//! referenced
+//! cart collection
+let c0 = {
+  prod1: { pId: "P123", qty: 3 },
+  prod2: { pId: "P234", qty: 4 },
+};
+let c2 = {
+  prod1: { name: "keyboard", price: "10000", qty: 1, brand: "asus" },
+  prod2: { name: "shoes", price: "5000", qty: 1, brand: "nike" },
+  prod3: { name: "mouse", price: "2000", qty: 2, brand: "sam" },
+  prod4: { name: "bottle", price: "800", qty: 1, brand: "nike" },
+};
+
+//! prod coll
+let p1 = {
+  _id: "P123",
+  name: "phone",
+  price: "50000",
+  brand: "sam",
+};
+let p2 = {
+  _id: "P234",
+  name: "laptop",
+  price: "70000",
+  brand: "asus",
+};
+let p3 = {
+  name: "mouse",
+  brand: "asus",
+  price: "4000",
+};
+
+let emp = {
+  name: "abc",
+}; // 0x3ae2
+stu = emp;
+stu.name = "xyz";
+
+console.log(emp);
+// pass by value
+// pass by reference
+
+//! to create a collection
+db.createCollection("collection_name", { structure });
+
+/* 
+let users
+{
+  name:string
+  age:string
+  isMarried:boolean
+}
+
+*/
+//! not used in projects
+
+db.createCollection("userColl", {
+  validator: {
+    //? this will validate the incoming the data
+    $jsonSchema: {
+      //? defining the schema
+      bsonType: "object", //? input type of incoming data
+      required: ["name", "age", "isMarried"],
+      properties: {
+        name: {
+          bsonType: "string",
+        },
+        age: {
+          bsonType: "int",
+        },
+        isMarried: {
+          bsonType: "bool",
+        },
+      },
+    },
+  },
+});
+
+db.userColl.insertOne({
+  name: "abc",
+  age: 23,
+  isMarried: true,
+  email: "abc@gmail",
+});
+
+{
+  name: string;
+  isMarried: boolean;
+  address: {
+    city: string;
+    state: string;
+  }
+  skills: [string];
+}
+
+db.createCollection("user2Coll", {
+  validator: {
+    $jsonSchema: {
+      bsonType: "object",
+      required: ["name", "isMarried", "address", "skills"],
+      properties: {
+        name: {},
+        isMarried: {},
+        address: {
+          bsonType: "object",
+          required: ["city", "state"],
+          properties: {
+            city: {},
+            state: {},
+          },
+        },
+        skills: {
+          bsonType: "array",
+          items: {
+            bsonType: "string",
+          },
+        },
+      },
+    },
+  },
+});
+
+db.user2Coll.insertOne({
+  name: 123,
+  isMarried: "true",
+  address: {
+    city: ["abc"],
+    state: ["abc"],
+  },
+  skills: [true, "abc"],
+});
+
+//? mongoose --> ODM ORM

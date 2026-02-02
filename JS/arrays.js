@@ -11,3 +11,5 @@ let arr = [
 // console.log(obj.age);
 
 console.log(arr[2].age);
+
+// https://excalidraw.com/#json=Lpw9ZX8Ti4bAK4OLIlIV6,oLZ7nQ2QM65QrJoTPxD7fw
