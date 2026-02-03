@@ -417,7 +417,7 @@ db.books.updateOne({ author: "james" }, { $set: { price: 25 } });
 //! questions
 //! cursor
 //! data modelling
-//~ aggregation operators
+//~ aggregation operators ()
 //? ==> pipeline stages op (match, group, etc..)
 //? ==> accumulator op (max, min, avg, count, sum)
 //? ==> arithmetic and date op (add, subtract, date, etc..)
@@ -1832,4 +1832,164 @@ db.user2Coll.insertOne({
   skills: [true, "abc"],
 });
 
-//? mongoose --> ODM ORM
+//! ================================================================================
+//! using aggregate() --> we can only fetch the data
+//~ ==================== AGGREGATION ===============================================
+//? DATA PROCESSING PIPELINE --> multiple queries (stage) are combined to a single query
+
+//! aggregate()
+//! QUES) display the count of emp in each department who are are working in "new york"
+//? find() X (not possible using find())
+
+//? syntax for aggregate()
+//~ db.collection_name.aggregate([{stage1}, {stage2}, {stage3}, ....]);
+//! here each stage represent a query
+//~ aggregation operators --> $match, $group, $lookup, $unwind, $project
+
+//? syntax for stages : { $aggregation-op: {} }
+
+//? input to the first stage is the complete collection
+//! output of each stage in input to the next stage
+//! in each stage only one aggregation operator is used
+
+//! ============== different aggregation op ==============
+//! $match --> it is used to apply conditions (it is used to filter the documents based on conditions)
+//? find all the emp names who are working as clerk
+db.emp.find({ job: "clerk" }, { empName: 1, _id: 0 });
+
+db.emp.aggregate([
+  {
+    $match: { job: "clerk" },
+  }, //& stage 1
+  {
+    $project: {
+      empName: 1,
+      _id: 0,
+    },
+  }, //& stage-2
+]);
+
+db.emp.aggregate([
+  {
+    $project: {
+      empName: 1,
+      _id: 0,
+      job: 1,
+    },
+  }, //& stage-2
+  {
+    $match: { job: "clerk" },
+  }, //& stage 1
+]);
+
+db.emp.aggregate([
+  {
+    $match: {
+      job: "clerk",
+    },
+  },
+  {
+    $project: {
+      empName: 1,
+      _id: 0,
+    },
+  },
+]);
+
+//? find all the emp names who are working as clerk and display their names as username
+
+db.emp.aggregate([
+  {
+    $match: {
+      job: "clerk",
+    },
+  },
+  {
+    $project: {
+      username: "$empName", //? aliasing
+      age: 1,
+      _id: 0,
+      above25: { $gte: ["$age", 25] },
+    },
+  },
+]);
+
+//! whenever we are passing doc field as a value then we have to use double quotes and $ symbol before it.
+// ? {aliasName: "$fieldName"} $project op
+
+//& $group --> it is used to group the documents based on some value
+//? {
+//?   $group: {
+//?     _id: "$fieldName"; //? grouping value (to avoid duplicates)
+//?     count: {$sum: 1}
+//?     total:{$sum: "$fieldName"},
+//?     average:{$avg: "$fieldName"},
+//?     max:{$max: "$fieldName"},
+//?     min:{$min: "$fieldName"},
+//?   }
+//? }
+//~ (max, min, count, total and average are used in the group stage only)
+
+//? find the number of employees in each job (clerk, manager, ....)
+db.emp.aggregate([
+  {
+    $group: {
+      _id: "$job",
+      count: { $sum: 1 },
+    },
+  },
+]);
+
+//! 1. Find all employees with salary greater than 2000
+db.emp.aggregate([
+  {
+    $match: { sal: { $gt: 2000 } },
+  },
+]);
+
+//! 2. Find all employees name and hireDate working in department 20 or 30
+db.emp.aggregate([
+  { $match: { deptNo: { $in: [20, 30] } } }, //s1
+  { $project: { empName: 1, hireDate: 1, _id: 0 } }, //s2
+]);
+
+//! 3. Find all managers and analysts in department 10 or 30
+db.emp.aggregate([
+  {
+    $match: {
+      $and: [
+        { job: { $in: ["manager", "analysts"] } },
+        { deptNo: { $in: [10, 30] } },
+      ],
+    },
+  },
+  {
+    $project: {
+      job: 1,
+      deptNo: 1,
+      _id: 0,
+    },
+  },
+]);
+
+//! 4. Find employees with performance rating above 4.0
+
+//! 5. Find all active departments
+
+//! 6. Find employees hired after 1985
+ISODate("YYYY-MM-DD");
+$gt-- > ISODate("1985-12-31");
+$gte-- > ISODate("1986-01-01");
+
+db.emp.aggregate([
+  {
+    $match: {
+      hireDate: { $gte: ISODate("1986-01-01") },
+    },
+  },
+  {
+    $project: {
+      hireDate: 1,
+    },
+  },
+]);
