@@ -1981,6 +1981,8 @@ ISODate("YYYY-MM-DD");
 $gt-- > ISODate("1985-12-31");
 $gte-- > ISODate("1986-01-01");
 
+//? $year, $month, $dayOfMonth
+
 db.emp.aggregate([
   {
     $match: {
@@ -1990,6 +1992,175 @@ db.emp.aggregate([
   {
     $project: {
       hireDate: 1,
+    },
+  },
+]);
+
+db.emp.aggregate([
+  {
+    $addFields: {
+      year: { $year: "hireDate" },
+    },
+  },
+  {
+    $match: {
+      year: { $gte: 1985 },
+    },
+  },
+]);
+
+//! 22. Find average salary by department
+db.emp.aggregate([
+  {
+    $group: {
+      _id: "$deptNo",
+      averageSalary: { $avg: "$sal" },
+      maxSal: { $max: "$sal" },
+    },
+  }, // stage-1
+  {
+    $project: {
+      departmentNo: "$_id",
+      averageSalary: 1,
+      _id: 0,
+      maxSal: 1,
+    },
+  },
+]);
+
+//! 23. Find total salary expense by department
+
+//! 24. Find maximum salary in each department
+
+//? display the count of employees in each job along with their name.
+db.emp.aggregate([
+  {
+    $group: {
+      _id: "$job",
+      count: { $sum: 1 },
+      empNames: { $push: "$empName" },
+    },
+  },
+]);
+
+//! ============ $addFields ================================ this is used to add a field while fetching the documents
+
+db.collection_name.aggregate([
+  {
+    $addFields: {
+      fieldName: Value,
+    },
+  },
+]);
+
+db.emp.aggregate([
+  {
+    $addFields: {
+      isAvailable: true,
+    },
+  },
+]);
+
+($add, $multiply, $divide, $mod, $subtract);
+{
+  $add: [v1, v2]; //? in case of $add we can pass multiple values
+}
+//! find the names of the emp along with their annual salary
+
+db.emp.aggregate([
+  {
+    $addFields: {
+      annualSal: {
+        $multiply: ["$sal", 12],
+      },
+    },
+  },
+]);
+
+//! display the hired year along with annual salary of each emp
+db.emp.aggregate([
+  {
+    $addFields: {
+      anSal: {
+        $multiply: ["$sal", 12],
+      },
+      // month: { $month: "$hireDate" },
+    },
+  }, // s1
+  {
+    $addFields: {
+      year: { $year: "$hireDate" },
+    },
+  }, // s2
+  {
+    $project: {
+      empName: 1,
+      anSal: 1,
+      year: 1,
+      _id: 0,
+      month: 1,
+    },
+  }, //s3
+]);
+
+//& $lookup --> it is used to perform join operation between two or more collections
+db.collection_name.aggregate([
+  {
+    $lookup: {
+      from: "name of the collection to be joined",
+      foreignField: "name of the field to be matched of foreign collection",
+      localField: "name of the field to be matched of local collection",
+      as: "alias name", //? usually, we pass localField as the alias name
+    },
+  },
+]);
+
+db.userInfo.insertMany([
+  {
+    _id: "A123",
+    name: "ashwin",
+    contact: "C123",
+  },
+  {
+    _id: "V123",
+    name: "varun",
+    contact: "C234",
+  },
+]);
+
+db.contactInfo.insertMany([
+  {
+    _id: "C123",
+    email: "ashwin@gmail",
+    user: "A123",
+  },
+  {
+    _id: "C234",
+    email: "varun@gmail",
+    user: "V123",
+  },
+]);
+
+//? merged contactInfo with userInfo
+db.userInfo.aggregate([
+  {
+    $lookup: {
+      from: "contactInfo",
+      foreignField: "_id",
+      localField: "contact",
+      as: "contact",
+    },
+  },
+]);
+
+//? merged userInfo with contactInfo
+db.contactInfo.aggregate([
+  {
+    $lookup: {
+      from: "userInfo",
+      foreignField: "_id",
+      localField: "user",
+      as: "userInfo",
     },
   },
 ]);
