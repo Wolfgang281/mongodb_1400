@@ -2143,12 +2143,23 @@ db.contactInfo.insertMany([
 
 //? merged contactInfo with userInfo
 db.userInfo.aggregate([
+  // { $match: { name: "ashwin" } },
   {
     $lookup: {
       from: "contactInfo",
       foreignField: "_id",
       localField: "contact",
       as: "contact",
+    },
+  },
+  {
+    $unwind: "$contact",
+  },
+  {
+    $project: {
+      userEmail: "$contact.email",
+      name: 1,
+      _id: 0,
     },
   },
 ]);
@@ -2163,4 +2174,193 @@ db.contactInfo.aggregate([
       as: "userInfo",
     },
   },
+  {
+    $unwind: "$userInfo",
+  },
+  {
+    $project: {
+      "userInfo.name": 1,
+      email: 1,
+    },
+  },
 ]);
+
+//& --> $unwind: it is used to remove array from the field (used to deconstruct the array)
+{
+  $unwind: "$fieldName";
+}
+
+//! display all the emp name along with their location
+db.emp.aggregate([
+  {
+    $lookup: {
+      from: "dept",
+      foreignField: "dept",
+      localField: "deptNo",
+      as: "deptNo",
+    },
+  },
+  {
+    $unwind: "$deptNo",
+  },
+  {
+    $project: {
+      empName: 1,
+      location: "$deptNo.loc",
+      _id: 0,
+    },
+  },
+]);
+
+//! count the number of emp having specific skills
+db.emp.aggregate([
+  {
+    $unwind: "$skills",
+  },
+  {
+    $group: {
+      _id: "$skills",
+      count: { $sum: 1 },
+      // count: { $count: {} }, $count is deprecated
+    },
+  },
+  {
+    $project: {
+      skills: "$_id",
+      _id: 0,
+      count: 1,
+    },
+  },
+]);
+
+//! display all the emp names, jobs along with their dept name who are having letter "a" in their name and annual salary is greater than 24,000
+($addFields, $match, $lookup);
+($match(a), $addFields(anSal), $match(anSal), $lookup);
+
+db.emp.aggregate([
+  {
+    $match: {
+      empName: { $regex: /a/ },
+    },
+  },
+  {
+    $addFields: {
+      anSal: {
+        $add: [
+          { $ifNull: ["$bonus", 0] },
+          { $ifNull: ["$comm", 0] },
+          { $multiply: ["$sal", 12] },
+        ],
+      },
+    },
+  },
+  {
+    $match: {
+      anSal: { $gt: 24000 },
+    },
+  },
+  {
+    $lookup: {
+      from: "dept",
+      localField: "deptNo",
+      foreignField: "dept",
+      as: "deptNo",
+    },
+  },
+  { $unwind: "$deptNo" },
+  {
+    $project: {
+      empName: 1,
+      _id: 0,
+      job: 1,
+      location: "$deptNo.loc",
+    },
+  },
+]);
+
+annSal = monthly * 12 + comm + bonus;
+db.emp.aggregate([
+  {
+    $addFields: {
+      anSal: {
+        $add: [
+          { $ifNull: ["$bonus", 0] },
+          { $ifNull: ["$comm", 0] },
+          { $multiply: ["$sal", 12] },
+        ],
+      },
+    },
+  },
+  {
+    $project: {
+      empName: 1,
+      _id: 0,
+      anSal: 1,
+    },
+  },
+]);
+
+db.emp.aggregate([
+  {
+    $addFields: {
+      greetings: {
+        $ifNull: ["$something", "hi"],
+      },
+    },
+  },
+]);
+
+//! $sort, $skip, $limit --> find() (Cursor : pretty(), count(), forEach(), sort({}), skip(1), limit(3))
+{
+  $sort: {
+    // fieldName: 1 / -1,
+    // fieldName2: 1/-1
+  }
+  //? this will arrange in asc/desc order
+}
+// if 2 or more docs have same value then mongodb will arrange the docs based on second field
+//! the default behavior of $sort is ascending order
+
+{
+  // $skip : +ve Integer // this will skip the n number of docs
+}
+
+{
+  // $limit : +ve Integer //? this will limit the op to n number of docs
+}
+
+//! display the emp details who is having the highest salary
+db.emp.aggregate([
+  {
+    $sort: {
+      sal: -1, //? -1 for descending and 1 for ascending
+    },
+  },
+  {
+    $limit: 1,
+  },
+]);
+
+db.emp.find().sort({ sal: -1 }).limit(1);
+
+//! display the emp name and salary who is having the second lowest salary
+db.emp.aggregate([
+  {
+    $sort: {
+      sal: 1,
+      empName: -1,
+    },
+  },
+  {
+    $skip: 1,
+  },
+  { $limit: 1 },
+  {
+    $project: {
+      empName: 1,
+      sal: 1,
+      _id: 0,
+    },
+  },
+]);
+db.emp.find().sort({ sal: 1, empName: -1 }).skip(1).limit(1);
