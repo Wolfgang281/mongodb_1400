@@ -74,8 +74,20 @@ let user2 = {
 
 //? 3) graph database --> data is stored in the nodes and different nodes are connected with the help of edges , example --> neo4j (used in social media applications)
 
-//? 4) wide column database/ columnar database --> data is getting stored in form of rows and columns, example --> cassendraDB (used for ai model training, (used in analytics))
-//TODO:
+//? 4) wide column database/ columnar database --> data is getting stored in form of rows and columns, example --> cassendraDB, scyllaDB (used for ai model training, (used in analytics))
+//? entry no.1
+//> 1st row
+/* name:"bc",
+email:""
+id:"" */
+
+//? 2nd row
+/* name:"bc",
+email:""
+age:"",
+id:""
+phone:""
+skills:"" */
 
 //~ difference between sql and no-sql databases
 
@@ -375,7 +387,6 @@ db.sampleData.find({}); // when no conditions are passed, all the documents are 
 db.sampleData.find();
 
 //! ============ NOTE: ========================= find() returns a cursor(pointer) --> object
-//TODO:
 
 //? 9) to delete a single document  --> deleteOne(): this will delete the first matched document
 db.collection_name.deleteOne({ filterCondition }); // in this, the first matched document is deleted
@@ -815,11 +826,21 @@ db.emp.find({ empName: { $regex: /^j.*s$/ } }, { empName: 1 });
 
 //? expr =======================================> $expr
 //? expression --> 1) it is used to perform operations(comparison) in the documents
-//? --> 2) it is used to perform aggregation operations //TODO:
+//? --> 2) it is used to perform aggregation operations
+
+//! find all the emp who were hired in the month of jan
+db.emp.find(
+  {
+    $expr: {
+      $eq: [{ $month: "$hireDate" }, 1],
+    },
+  },
+  { hireDate: 1, _id: 0 },
+);
 
 //~ syntax for expr -->
 // filter part
-// { $expr: { $CO: [] } }
+//! { $expr: { $CO: [] } }
 //? co -> comparison operator
 
 // display all the emp names and sal whose sal is greater than 2500
@@ -1496,7 +1517,19 @@ db.emp.find({ sal: { $gt: 1000, $lt: 2000 } }, { _id: 0, sal: 1 });
 // { fieldname: {$mod: [divisor, remainder]} }
 db.emp.find({ age: { $mod: [10, 0] } }, { age: 1 });
 
-//! 49. Find employees where age multiplied by 100 is less than salary (use $expr) //TODO:
+//! 49. Find employees where age multiplied by 100 is less than salary (use $expr)
+db.emp.find(
+  {
+    $expr: {
+      $lt: [{ $multiply: ["$age", 50] }, "$sal"],
+    },
+  },
+  {
+    age: 1,
+    sal: 1,
+    _id: 0,
+  },
+);
 
 //! 50. Find all employees whose job title contains "man" (manager, salesman)
 db.emp.find({ job: { $regex: /^man/ } }, { job: 1 });
@@ -2364,3 +2397,184 @@ db.emp.aggregate([
   },
 ]);
 db.emp.find().sort({ sal: 1, empName: -1 }).skip(1).limit(1);
+
+//! 100, 90, 90, 80 (3rd)
+//? sal group
+
+db.emp.find({}, { sal: 1, _id: 0 }).sort({ sal: -1 });
+
+/* 
+[
+  { sal: 5000 }, { sal: 3000 },
+  { sal: 3000 }, { sal: 2975 },
+  { sal: 2850 }, { sal: 2450 },
+  { sal: 1600 }, { sal: 1500 },
+  { sal: 1300 }, { sal: 1250 },
+  { sal: 1250 }, { sal: 1100 },
+  { sal: 1100 }, { sal: 950 }
+]
+*/
+
+db.emp.aggregate([
+  {
+    $sort: {
+      sal: -1,
+    },
+  },
+  {
+    $skip: 2,
+  },
+  {
+    $limit: 1,
+  },
+  {
+    $project: {
+      sal: 1,
+    },
+  },
+]);
+
+//! display the name of the emp having 3rd highest sal
+db.emp.aggregate([
+  {
+    $group: {
+      _id: "$sal",
+      name: { $push: "$empName" },
+    },
+  },
+  {
+    $sort: {
+      _id: -1,
+    },
+  },
+  {
+    $skip: 2,
+  },
+  {
+    $limit: 1,
+  },
+  {
+    $unwind: "$name",
+  },
+  {
+    $project: {
+      _id: 0,
+      salary: "$_id",
+      name: 1,
+    },
+  },
+]);
+
+db.emp.aggregate([
+  {
+    $group: {
+      _id: "$age",
+      count: { $sum: 1 },
+    },
+  },
+]);
+
+//~ bucket --> used to group the docs based on certain ranges
+db.emp.aggregate([
+  {
+    $bucket: {
+      groupBy: "fieldname",
+      boundaries: [0, 20, 30, 50],
+      default: "greater than 50",
+      output: {
+        count: { $sum: 1 },
+        age: { $push: "$age" }, //? acc
+      },
+    },
+  },
+]);
+//! min <= x < max
+//? first bucket will be from (0 to 20 with bucket id 0) (20 is excluded)
+//? second bucket will be from (20 to 30 with bucket id 20)
+
+//! bucketAuto -> this will create buckets automatically with ranges such that each bucket will contain almost same no. of docs
+db.emp.aggregate([
+  {
+    $bucketAuto: {
+      groupBy: "fieldName",
+      buckets: "number of buckets",
+      output: {
+        count: { $sum: 1 },
+      },
+    },
+  },
+]);
+
+//? $ROOT, $$FIRST --> NODE/EXPRESS
+
+//! count the total number of employees
+
+db.emp.find().count();
+db.emp.find().countDocuments();
+
+//! what is the amount company is spending on emp salary(sal)
+
+db.emp.aggregate([
+  {
+    $group: {
+      _id: null,
+      totalExp: { $sum: "$sal" },
+      count: { $sum: 1 },
+    },
+  },
+]);
+
+db.emp
+  .find({ _id: ObjectId("66a23517b5c6990483c4e4a0") })
+  .explain("executionStats");
+
+db.emp.find({ empName: "blake" }).explain();
+
+let arr = [12, 34, 5, 6, 23, 7, 8]; //? O(n)
+let arr2 = [1, 2, 3, 5, 6]; //? binary search O(log n)
+//? B-tree (binary tree)
+
+db.emp.find({ age: { $gt: 30 }, sal: { $gt: 2000 } }).explain("executionStats");
+
+//! to create an index --> createIndex()
+//! to get all the indexes --> getIndexes()
+
+//! to delete an index --> db.emp,dropIndex({age:1})
+//! to delete an index --> db.emp,dropIndex("age_1")
+db.emp.createIndex({ age: 1 });
+
+db.movies.find({ year: { $gt: 2012 } }).explain("executionStats");
+db.movies.createIndex({ year: 1 });
+
+//! acid (sql) and base (no-sql) properties
+//? a -> atomicity, c -> consistency, i -> isolation, d -> durability
+//? all or none (10 steps)
+//? acc (1000) -> 100 rs : 900
+//? multiple process will not affect each other
+//? durability --> changes made are fixed(until the user changes)
+//? bank app
+
+//? ba --> basically available
+//? s --> soft state : data can be changed without any user input (login, logout)
+//? e --> eventually consistent
+
+//? instagram --> post --> user a --> user b
+//! login >> token gen >> saved in redis(key,value) >> soft state
+
+//? mysql
+//? postgres
+
+// _id is the default index which mongodb creates
+//? find() --> collection scan (COLLSCAN) (scan each and every doc)
+//? --> index scan (IXSCAN) (not every part of the collection is read ) -> mongodb is scanning a different data structure (b -tree).
+//? in binary tree , a small portion of doc gets saved along with the reference to the complete doc(_id)
+
+createIndex({ fieldName: 1 / -1 });
+createIndex({ age: 1, name: 1 }); //? age, age and name
+//? name --> coll scan
+getIndexes();
+dropIndex();
+
+find().explain("executionStats");
+
+//? TTL time to live

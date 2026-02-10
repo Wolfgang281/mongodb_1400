@@ -13,3 +13,6 @@ let arr = [
 console.log(arr[2].age);
 
 // https://excalidraw.com/#json=Lpw9ZX8Ti4bAK4OLIlIV6,oLZ7nQ2QM65QrJoTPxD7fw
+
+// mongodb ref notes
+// https://excalidraw.com/#json=26Ur4dP_t_-HYiVHWKtOl,mTqJUcOBkfd_zX1B88RF1g

@@ -105,13 +105,6 @@ db.collection_name.aggregate([
   },
 ]);
 
-//? $unwind --> it is used to deconstruct an array field from the input documents to output a document for each element (used to flatten the array)
-db.collection_name.aggregate([
-  {
-    $unwind: "$arrayFieldName",
-  },
-]);
-
 //? $addFields --> it is used to add a field while fetching the documents
 db.collection_name.aggregate([
   {
